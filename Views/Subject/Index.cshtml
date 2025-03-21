@@ -24,7 +24,7 @@
                         📖 @subject.SubjectName
                     </a>
                     <div>
-                        <button class="btn btn-warning btn-sm" onclick="editSubject(@subject.SubjectId)">✏️ Edit</button>
+                        <button class="btn btn-warning btn-sm" onclick="editSubject(@subject.SubjectId, '@subject.SubjectName')">✏️ Edit</button>
                         <button class="btn btn-danger btn-sm" onclick="deleteSubject(@subject.SubjectId)">🗑️ Delete</button>
                     </div>
                 </div>
@@ -102,9 +102,24 @@
         }
 
         function toggleSubtopics(subjectId) {
-            $(".card-body").addClass("d-none"); // Hide all subtopics sections
-            $("#subtopics-" + subjectId).toggleClass("d-none"); // Toggle the selected one
-            loadSubtopics(subjectId);
+            var subtopicDiv = $("#subtopics-" + subjectId);
+
+            if (subtopicDiv.hasClass("d-none")) {
+                $(".card-body").addClass("d-none"); // Hide all subtopics sections
+                subtopicDiv.removeClass("d-none");
+                loadSubtopics(subjectId);
+            } else {
+                subtopicDiv.addClass("d-none");
+            }
+        }
+
+        function editSubject(subjectId, currentName) {
+            var newName = prompt("Edit Subject Name:", currentName);
+            if (newName && newName.trim() !== "" && newName !== currentName) {
+                $.post("/Subject/EditSubject", { subjectId: subjectId, newName: newName.trim() }, function () {
+                    location.reload();
+                });
+            }
         }
 
         function loadSubtopics(subjectId) {
@@ -117,8 +132,11 @@
                     data.forEach(function (subTopic) {
                         list.append(`
                             <li class="list-group-item d-flex justify-content-between align-items-center">
-                                ${subTopic.subTopicName}
-                                <button class="btn btn-sm btn-danger" onclick="deleteSubTopic(${subTopic.subTopicId}, ${subjectId})">🗑️</button>
+                                <span>${subTopic.subTopicName}</span>
+                                <div>
+                                    <button class="btn btn-sm btn-warning" onclick="editSubTopic(${subTopic.subTopicId}, '${subTopic.subTopicName}', ${subjectId})">✏️</button>
+                                    <button class="btn btn-sm btn-danger" onclick="deleteSubTopic(${subTopic.subTopicId}, ${subjectId})">🗑️</button>
+                                </div>
                             </li>
                         `);
                     });
@@ -148,6 +166,15 @@
             $.post("/Subject/DeleteSubTopic", { subTopicId: subTopicId }, function () {
                 loadSubtopics(subjectId);
             });
+        }
+
+        function editSubTopic(subTopicId, currentName, subjectId) {
+            var newName = prompt("Edit SubTopic Name:", currentName);
+            if (newName && newName.trim() !== "" && newName !== currentName) {
+                $.post("/Subject/EditSubTopic", { subTopicId: subTopicId, newName: newName.trim() }, function () {
+                    loadSubtopics(subjectId);
+                });
+            }
         }
     </script>
 }

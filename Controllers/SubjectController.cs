@@ -33,7 +33,20 @@ namespace SubjectApp.Controllers
             }
             return Ok();
         }
+        [HttpPost]
+        public JsonResult EditSubject(int subjectId, string newName)
+        {
+            var subject = _context.Subjects.Find(subjectId);
+            if (subject == null)
+            {
+                return Json(new { success = false, message = "Subject not found!" });
+            }
 
+            subject.SubjectName = newName;
+            _context.SaveChanges();
+
+            return Json(new { success = true });
+        }
         [HttpPost]
         public async Task<IActionResult> DeleteSubject(int subjectId)
         {
@@ -79,6 +92,39 @@ namespace SubjectApp.Controllers
                 await _context.SaveChangesAsync();
             }
             return Ok();
+
         }
+        [HttpPost]
+        public async Task<IActionResult> EditSubTopic(int subTopicId, string newName)
+        {
+            if (string.IsNullOrWhiteSpace(newName))
+            {
+                return Json(new { success = false, message = "SubTopic name cannot be empty!" });
+            }
+
+            var subTopic = await _context.SubTopics.FindAsync(subTopicId);
+            if (subTopic == null)
+            {
+                return Json(new { success = false, message = "SubTopic not found!" });
+            }
+
+            // ✅ Check for duplicate subtopic under the same subject
+            bool isDuplicate = await _context.SubTopics
+                .AnyAsync(st => st.SubjectId == subTopic.SubjectId && st.SubTopicName == newName);
+
+            if (isDuplicate)
+            {
+                return Json(new { success = false, message = "SubTopic already exists!" });
+            }
+
+            subTopic.SubTopicName = newName;
+            await _context.SaveChangesAsync();
+
+            return Json(new { success = true, newName = subTopic.SubTopicName });
+        }
+
+
+
+
     }
 }
