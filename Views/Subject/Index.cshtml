@@ -1,0 +1,153 @@
+﻿@model List<SubjectApp.Models.Subject>
+@{
+    ViewData["Title"] = "Subject Management";
+}
+
+<div class="container mt-4">
+    <h2 class="mb-4">📚 Subject Management</h2>
+
+    <!-- Add Subject Form -->
+    <div class="input-group mb-3">
+        <input type="text" id="subjectName" class="form-control" placeholder="Enter Subject Name">
+        <button class="btn btn-primary" onclick="addSubject()">➕ Add Subject</button>
+    </div>
+    <span id="subjectExistsMsg" class="text-danger" style="display:none;">Already Exists!</span>
+
+    <!-- Scrollable Subject List -->
+    <div id="subjectList" class="subject-container">
+        @foreach (var subject in Model)
+        {
+            <div class="card mb-3">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <!-- Subject Name as Hyperlink -->
+                    <a href="javascript:void(0);" onclick="toggleSubtopics(@subject.SubjectId)" class="text-decoration-none fw-bold">
+                        📖 @subject.SubjectName
+                    </a>
+                    <div>
+                        <button class="btn btn-warning btn-sm" onclick="editSubject(@subject.SubjectId)">✏️ Edit</button>
+                        <button class="btn btn-danger btn-sm" onclick="deleteSubject(@subject.SubjectId)">🗑️ Delete</button>
+                    </div>
+                </div>
+
+                <!-- Scrollable Subtopic Section (Initially Hidden) -->
+                <div id="subtopics-@subject.SubjectId" class="card-body subtopic-container d-none">
+                    <div class="input-group mb-2">
+                        <input type="text" id="subTopicName-@subject.SubjectId" class="form-control" placeholder="Enter SubTopic Name">
+                        <button class="btn btn-success" onclick="addSubTopic(@subject.SubjectId)">➕ Add SubTopic</button>
+                    </div>
+                    <span id="subTopicExistsMsg-@subject.SubjectId" class="text-danger" style="display:none;">Already Exists!</span>
+
+                    <!-- Scrollable Subtopic List -->
+                    <ul id="subTopicList-@subject.SubjectId" class="list-group subtopic-list"></ul>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+<!-- CSS for Scrollable Sections -->
+<style>
+    /* Scrollable Subject List */
+    .subject-container {
+        max-height: 400px; /* Adjust as needed */
+        overflow-y: auto;
+        border: 1px solid #ddd;
+        padding: 10px;
+        border-radius: 5px;
+    }
+
+    /* Scrollable Subtopic List */
+    .subtopic-container {
+        max-height: 300px; /* Adjust as needed */
+        overflow-y: auto;
+        border: 1px solid #ddd;
+        padding: 10px;
+        border-radius: 5px;
+    }
+
+    /* Scrollable individual subtopic list inside each card */
+    .subtopic-list {
+        max-height: 200px; /* Adjust as needed */
+        overflow-y: auto;
+    }
+</style>
+
+@section Scripts {
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        function addSubject() {
+            var subjectName = $("#subjectName").val().trim();
+            $("#subjectExistsMsg").hide();
+
+            if (subjectName === "") return;
+
+            // Check for duplicates
+            var exists = $(".card-header a").toArray().some(a => $(a).text().trim().toLowerCase() === subjectName.toLowerCase());
+            if (exists) {
+                $("#subjectExistsMsg").show();
+                return;
+            }
+
+            $.post("/Subject/CreateSubject", { subjectName: subjectName }, function () {
+                location.reload();
+            });
+        }
+
+        function deleteSubject(subjectId) {
+            if (!confirm("Are you sure you want to delete this subject?")) return;
+
+            $.post("/Subject/DeleteSubject", { subjectId: subjectId }, function () {
+                location.reload();
+            });
+        }
+
+        function toggleSubtopics(subjectId) {
+            $(".card-body").addClass("d-none"); // Hide all subtopics sections
+            $("#subtopics-" + subjectId).toggleClass("d-none"); // Toggle the selected one
+            loadSubtopics(subjectId);
+        }
+
+        function loadSubtopics(subjectId) {
+            $.get("/Subject/GetSubTopics", { subjectId: subjectId }, function (data) {
+                var list = $("#subTopicList-" + subjectId);
+                list.empty();
+                if (data.length === 0) {
+                    list.append('<li class="list-group-item text-muted">No subtopics added yet.</li>');
+                } else {
+                    data.forEach(function (subTopic) {
+                        list.append(`
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                ${subTopic.subTopicName}
+                                <button class="btn btn-sm btn-danger" onclick="deleteSubTopic(${subTopic.subTopicId}, ${subjectId})">🗑️</button>
+                            </li>
+                        `);
+                    });
+                }
+            });
+        }
+
+        function addSubTopic(subjectId) {
+            var subTopicName = $("#subTopicName-" + subjectId).val().trim();
+            $("#subTopicExistsMsg-" + subjectId).hide();
+
+            if (subTopicName === "") return;
+
+            // Check for duplicates
+            var exists = $("#subTopicList-" + subjectId + " li").toArray().some(li => $(li).text().trim().startsWith(subTopicName));
+            if (exists) {
+                $("#subTopicExistsMsg-" + subjectId).show();
+                return;
+            }
+
+            $.post("/Subject/CreateSubTopic", { subjectId: subjectId, subTopicName: subTopicName }, function () {
+                loadSubtopics(subjectId);
+            });
+        }
+
+        function deleteSubTopic(subTopicId, subjectId) {
+            $.post("/Subject/DeleteSubTopic", { subTopicId: subTopicId }, function () {
+                loadSubtopics(subjectId);
+            });
+        }
+    </script>
+}
